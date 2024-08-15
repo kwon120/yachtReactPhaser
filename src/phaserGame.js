@@ -1,14 +1,23 @@
 // src/PhaserGame.js
 import React, { useEffect, useRef } from 'react';
-import Phaser from 'phaser';
+import Phaser, { GameObjects } from 'phaser';
 import './phaserGame.css';
 import { click } from '@testing-library/user-event/dist/click';
+import Peer from 'peerjs';
+import { isClickableInput } from '@testing-library/user-event/dist/utils';
 
 const PhaserGame = () => {
   const gameRef = useRef(null);
   const containerRef = useRef(null);
-
+  const peerRef = useRef(null);
+  const connRef = useRef(null);
+  
   useEffect(() => {
+    peerRef.current = new Peer();
+    peerRef.current.on('open', id => {
+        console.log('My peer ID is: ' + id); //내 ID 출력
+    })
+
     const config = {
       type: Phaser.AUTO,
       width: 800,
@@ -27,6 +36,7 @@ const PhaserGame = () => {
     function preload() {}
 
     function create() {
+      // 게임 로직 변수
       const centerBoard = this.add.graphics();
       const rollingDice = [];
       const holdDice = [];
@@ -43,6 +53,191 @@ const PhaserGame = () => {
       let limitRolling = 3;
       let holdCount = 0;
       let currentPlayer = 'A';
+      let userPlayer = 'A';
+      let diceCount = 0;
+      // peer 변수
+      const connectButtonFill = this.add.graphics();
+      connectButtonFill.fillStyle(0xafafaf, 1).fillRect(5,5, 155, 25);
+      //호스트 피어 관련
+      peerRef.current.on('connection', conn => {
+        connRef.current = conn;
+        //호스트가 데이터를 받는 위치
+        conn.on('data', data => {
+            console.log('Received 24'); //받은 데이터 출력
+            //순서
+            switch(data){
+                case 'differ':
+                    console.log('toggle');
+                    togglePlayer();
+                    break;
+                case 'same':
+                    console.log('same');
+                default:
+            }
+            //굴림 주사위
+            switch(data.result){
+                case 1:
+                    diceTexts[data.isDice].setText(1);
+                    break;
+                case 2:
+                    diceTexts[data.isDice].setText(2);
+                    break;
+                case 3:
+                    diceTexts[data.isDice].setText(3);
+                    break;
+                case 4:
+                    diceTexts[data.isDice].setText(4);
+                    break;
+                case 5:
+                    diceTexts[data.isDice].setText(5);
+                    break;
+                case 6:
+                    diceTexts[data.isDice].setText(6);
+                    break;
+                default:
+            }
+            for(let i=4;i>4-data.isHold;i--){
+                diceTexts[i].setText();
+            }
+            //홀드 주사위
+            if(data.isClick === true){
+                console.log('you Click!!');
+                clickTexts[data.isHolding].setText(diceTexts[data.isCounting].text);
+            }
+            else{}
+            //주사위 정리
+            if(data.diceCleaner === true){
+                for(let i=0; i<5; i++){
+                    clickTexts[i].setText();
+                    diceTexts[i].setText();
+                }
+            }
+            //점수판
+            if(data.player === 'A'){    
+                scoreTextsA[data.number].setText(data.score);
+                scoreTextsA[8].setText(data.sum);
+                scoreTextsA[14].setText(data.total);
+                if(data.sum >= 63){
+                    scoreTextsA[7].setText(35);
+                }
+            }
+            else if(data.player === 'B'){
+                console.log(data.number, data.score);
+                scoreTextsB[data.number].setText(data.score);
+                scoreTextsB[8].setText(data.sum);
+                scoreTextsB[14].setText(data.total);
+                if(data.sum >= 63){
+                    scoreTextsB[7].setText(35);
+                }
+            }
+            else{
+                console.log('ㅡ.ㅡ');
+            }
+        });
+        conn.on('open', () => {
+            console.log('누군가가 연결했티비');
+            for(let i=0; i<5; i++){
+                holdCount = 0;
+                currentPlayer = 'A';
+                limitRolling = 3;
+                diceTexts[i].setText();
+                clickTexts[i].setText();
+            }
+        })
+    });
+      // 연결 입력 버튼
+      const connectButton = this.add.text(10, 10, 'Connect to Peer',{ fill: '#e3f' })
+        .setInteractive()
+        .on('pointerdown', () => {
+          const peerId = prompt('Enter peer ID:');
+          const conn = peerRef.current.connect(peerId);
+          connRef.current = conn;
+
+          conn.on('open', () => {
+            console.log('Connected to: ' + peerId);
+            userPlayer = 'B'
+            for(let i=0; i<5; i++){
+                holdCount = 0;
+                currentPlayer = 'A';
+                limitRolling = 3;
+                diceTexts[i].setText();
+                clickTexts[i].setText();
+            }
+          });
+          //게스트가 데이터를 받는 위치
+          conn.on('data', data => {
+            console.log('Received 81');
+            //순서
+            switch(data){
+                case 'differ':
+                    console.log('toggle');
+                    togglePlayer();
+                    break;
+                case 'same':
+                    console.log('same');
+                default:
+            }
+            //굴림 주사위
+            switch(data.result){
+                case 1:
+                    diceTexts[data.isDice].setText(1);
+                    break;
+                case 2:
+                    diceTexts[data.isDice].setText(2);
+                    break;
+                case 3:
+                    diceTexts[data.isDice].setText(3);
+                    break;
+                case 4:
+                    diceTexts[data.isDice].setText(4);
+                    break;
+                case 5:
+                    diceTexts[data.isDice].setText(5);
+                    break;
+                case 6:
+                    diceTexts[data.isDice].setText(6);
+                    break;
+                default:
+            }
+            for(let i=4;i>4-data.isHold;i--){
+                diceTexts[i].setText();
+            }
+            //홀드 주사위
+            if(data.isClick === true){
+                console.log('you Click!!');
+                clickTexts[data.isHolding].setText(diceTexts[data.isCounting].text);
+            }
+            else{}
+            //주사위 정리
+            if(data.diceCleaner === true){
+                for(let i=0; i<5; i++){
+                    clickTexts[i].setText();
+                    diceTexts[i].setText();
+                }
+            }
+            //점수판
+            if(data.player === 'A'){    
+                scoreTextsA[data.number].setText(data.score);
+                scoreTextsA[8].setText(data.sum);
+                scoreTextsA[14].setText(data.total);
+                if(data.sum >= 63){
+                    scoreTextsA[7].setText(35);
+                }
+            }
+            else if(data.player === 'B'){
+                scoreTextsB[data.number].setText(data.score);
+                scoreTextsB[8].setText(data.sum);
+                scoreTextsB[14].setText(data.total);
+                if(data.sum >= 63){
+                    scoreTextsB[7].setText(35);
+                }
+            }
+            else {
+                console.log('ㅡ.ㅡ');
+            }
+            // 받은 데이터를 바탕으로 게임 상태 업데이트 해야댐
+          });
+        });
       // 중앙 보드
       centerBoard.fillStyle(0xf5dcb7, 1);
       centerBoard.fillRect(40, 130, 450, 300);
@@ -62,8 +257,10 @@ const PhaserGame = () => {
 
         rollingDice[i].setInteractive(new Phaser.Geom.Rectangle(25+i*100, 350, 85, 85), Phaser.Geom.Rectangle.Contains);
         rollingDice[i].on('pointerdown', () => {
-            clickDice(i);
-            holdCount ++;
+            if(userPlayer === currentPlayer){
+                clickDice(i);
+                holdCount ++;
+            }
         })
         //홀드 주사위
         holdDice[i] = this.add.graphics();
@@ -83,16 +280,18 @@ const PhaserGame = () => {
       diceButton.setInteractive(new Phaser.Geom.Rectangle(20, 470, 500, 50), Phaser.Geom.Rectangle.Contains);
       
       diceButton.on('pointerdown', () => {
-        if(limitRolling !== 0){
-            randomRolling();
-            if(limitRolling === 1){
-                diceButton.fillStyle(0xeeeeee, 1);
-                diceButton.fillRect(20, 470, 500, 50);
+        if(userPlayer === currentPlayer){
+            if(limitRolling !== 0){
+                randomRolling();
+                if(limitRolling === 1){
+                    diceButton.fillStyle(0xeeeeee, 1);
+                    diceButton.fillRect(20, 470, 500, 50);
+                }
+                limitRolling--;
             }
-            limitRolling--;
-        }
-        else{
-            alert('limit');
+            else{
+                alert('limit');
+            }
         }
       });
       //점수판
@@ -127,14 +326,15 @@ const PhaserGame = () => {
             this.add.text(555+160, 70+i*30, 'B').setColor('0x000000');
         }
         else{
-            scoreTextsA[i] = this.add.text(555+80, 70+i*30).setColor('0xffffff');
-            scoreTextsB[i] = this.add.text(555+160, 70+i*30).setColor('0xffffff');
+            scoreTextsA[i] = this.add.text(555+80, 70+i*30).setColor('0x000000');
+            scoreTextsB[i] = this.add.text(555+160, 70+i*30).setColor('0x000000');
             score[i].setInteractive(new Phaser.Geom.Rectangle(530, 70+i*30, 80, 30), Phaser.Geom.Rectangle.Contains);
             score[i].on('pointerdown', () => {
-                writeScore(i);
+                if(userPlayer === currentPlayer){
+                    writeScore(i);
+                }
             })
         }
-        
       }
       //랜덤주사위 굴리기 함수
       function randomRolling(){
@@ -144,10 +344,20 @@ const PhaserGame = () => {
         for(let i=0; i<5-holdCount; i++){
             const rollingResult = Math.floor(Math.random()*6)+1;
             diceTexts[i].setText(rollingResult);
+            if(connRef.current && connRef.current.open) {
+                connRef.current.send({
+                    result : rollingResult,
+                    isDice : i,
+                    isHold : holdCount,
+                    diceCleaner : false,
+                    isClick : false,
+                });
+            }
         }
         for(let i=4; i>4-holdCount; i--){
-        diceTexts[i].setText();
+            diceTexts[i].setText();
         }
+
       }
       //홀드주사위 이동 함수
       function clickDice(i){
@@ -162,6 +372,13 @@ const PhaserGame = () => {
         clickTest[i] = 1;
         if(5-holdCount > 0){
             clickTexts[holdCount].setText(diceTexts[i].text);
+            if(connRef.current && connRef.current.open) {
+                connRef.current.send({
+                    isCounting : i,
+                    isHolding : holdCount,
+                    isClick : true,
+                });
+            }
         }
         else {
             holdCount --;
@@ -171,6 +388,9 @@ const PhaserGame = () => {
       function writeScore(number){
         let sum = 0;
         let total = 0;
+        if(clickTexts.some((e) => e.text === '')){
+            return;
+        }
         if(currentPlayer === 'A'){
             if(limitScoreBoardA[number] === 1){
                 alert('limit');
@@ -205,13 +425,13 @@ const PhaserGame = () => {
                 diceButton.fillRect(20, 470, 500, 50);
             }
         }
+        let getScore = calculator(number);
         if(currentPlayer === 'A'){
-            scoreTextsA[number].setText(calculator(number));
+            scoreTextsA[number].setText(getScore);
             for(let i=1; i<8; i++){
                 if(i === 7){
                     if(sum >= 63){
-                        const bonus = 35;
-                        scoreTextsA[7].setText(bonus);
+                        scoreTextsA[7].setText(35);
                     }
                 }
                 sum+=Number(scoreTextsA[i].text);
@@ -223,12 +443,11 @@ const PhaserGame = () => {
             scoreTextsA[14].setText(total);
         }
         else {
-            scoreTextsB[number].setText(calculator(number));
+            scoreTextsB[number].setText(getScore);
             for(let i=1; i<8; i++){
                 if(i === 7){
                     if(sum >= 63){
-                        const bonus = 35;
-                        scoreTextsB[7].setText(bonus);
+                        scoreTextsB[7].setText(35);
                     }
                 }
                 sum+=Number(scoreTextsB[i].text);
@@ -239,12 +458,30 @@ const PhaserGame = () => {
             }
             scoreTextsB[14].setText(total);
         }
+        if (connRef.current && connRef.current.open) {
+            connRef.current.send({
+                player: currentPlayer, 
+                sum: sum, 
+                total: total, 
+                number: number,
+                score: getScore,
+                diceCleaner : true,
+            });
+          }
         for(let i=0; i<5; i++){
             clickTexts[i].setText();
             diceTexts[i].setText();
         }
         holdCount = 0;
         togglePlayer();
+        if (connRef.current && connRef.current.open) {
+            if(currentPlayer !== userPlayer){
+                connRef.current.send('differ');
+            }
+            else {
+                connRef.current.send('same');
+            }
+          }
       }
       //점수판 계산 함수
       function calculator(number){
