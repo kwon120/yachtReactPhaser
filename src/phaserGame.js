@@ -1,10 +1,8 @@
 // src/PhaserGame.js
 import React, { useEffect, useRef } from 'react';
-import Phaser, { GameObjects } from 'phaser';
+import Phaser from 'phaser';
 import './phaserGame.css';
-import { click } from '@testing-library/user-event/dist/click';
 import Peer from 'peerjs';
-import { isClickableInput } from '@testing-library/user-event/dist/utils';
 
 const PhaserGame = () => {
   const gameRef = useRef(null);
@@ -54,7 +52,6 @@ const PhaserGame = () => {
       let holdCount = 0;
       let currentPlayer = 'A';
       let userPlayer = 'A';
-      let diceCount = 0;
       // peer 변수
       const connectButtonFill = this.add.graphics();
       connectButtonFill.fillStyle(0xafafaf, 1).fillRect(5,5, 155, 25);
@@ -63,19 +60,19 @@ const PhaserGame = () => {
         connRef.current = conn;
         //호스트가 데이터를 받는 위치
         conn.on('data', data => {
-            console.log('Received 24'); //받은 데이터 출력
             //순서
             switch(data){
                 case 'differ':
-                    console.log('toggle');
                     togglePlayer();
                     break;
                 case 'same':
-                    console.log('same');
+                    break;
                 default:
             }
             //굴림 주사위
             switch(data.result){
+                case '':
+                    console.log('null');
                 case 1:
                     diceTexts[data.isDice].setText(1);
                     break;
@@ -101,7 +98,6 @@ const PhaserGame = () => {
             }
             //홀드 주사위
             if(data.isClick === true){
-                console.log('you Click!!');
                 clickTexts[data.isHolding].setText(diceTexts[data.isCounting].text);
             }
             else{}
@@ -130,9 +126,7 @@ const PhaserGame = () => {
                     scoreTextsB[7].setText(35);
                 }
             }
-            else{
-                console.log('ㅡ.ㅡ');
-            }
+            else{}
         });
         conn.on('open', () => {
             console.log('누군가가 연결했티비');
@@ -166,15 +160,13 @@ const PhaserGame = () => {
           });
           //게스트가 데이터를 받는 위치
           conn.on('data', data => {
-            console.log('Received 81');
             //순서
             switch(data){
                 case 'differ':
-                    console.log('toggle');
                     togglePlayer();
                     break;
                 case 'same':
-                    console.log('same');
+                    break;
                 default:
             }
             //굴림 주사위
@@ -204,7 +196,6 @@ const PhaserGame = () => {
             }
             //홀드 주사위
             if(data.isClick === true){
-                console.log('you Click!!');
                 clickTexts[data.isHolding].setText(diceTexts[data.isCounting].text);
             }
             else{}
@@ -232,10 +223,7 @@ const PhaserGame = () => {
                     scoreTextsB[7].setText(35);
                 }
             }
-            else {
-                console.log('ㅡ.ㅡ');
-            }
-            // 받은 데이터를 바탕으로 게임 상태 업데이트 해야댐
+            else {}
           });
         });
       // 중앙 보드
